@@ -1,0 +1,70 @@
+name: AI Regression Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  regression-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run fast regression check
+        env:
+          OPENAI_API_KEY:        ${{ secrets.OPENAI_API_KEY }}
+          LANGCHAIN_API_KEY:     ${{ secrets.LANGCHAIN_API_KEY }}
+          LANGCHAIN_TRACING_V2:  "true"
+          LANGCHAIN_PROJECT:     ragops-ci
+          GITHUB_SHA:            ${{ github.sha }}
+        run: python scripts/run_full_benchmark.py --fast
+
+      - name: Upload regression report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-report-${{ github.sha }}
+          path: data/regression_report.json
+          retention-days: 30
+
+      - name: Comment results on PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request' && always()
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'data/regression_report.json';
+            if (!fs.existsSync(path)) return;
+            const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const passed = report.overall_passed;
+            const gatesLine = report.gates
+              .map(g => `| ${g.gate} | ${g.metric} | ${g.current.toFixed(3)} | ${g.threshold.toFixed(3)} | ${g.passed ? '✅' : '❌'} |`)
+              .join('\n');
+            const body = `## AI Regression Check — ${passed ? '✅ All gates passing' : '❌ Gates failing'}
+
+| Gate | Metric | Current | Threshold | Status |
+|------|--------|---------|-----------|--------|
+${gatesLine}
+
+${passed ? 'Safe to merge.' : '**Fix failing gates before merging.**'}
+
+_Powered by [RAGOps](https://github.com/${context.repo.owner}/${context.repo.repo})_`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });

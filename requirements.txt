@@ -1,0 +1,42 @@
+# Core LLM & RAG
+langchain==0.3.25
+langchain-openai==0.3.16
+langchain-community==0.3.24
+langchain-core==0.3.56
+openai==1.82.0
+
+# Vector store (in-memory, no external service needed)
+faiss-cpu==1.11.0
+
+# Quality evaluation
+ragas==0.2.15
+datasets==3.6.0
+
+# API & serving
+fastapi==0.115.12
+uvicorn==0.34.3
+pydantic==2.11.4
+
+# Load testing
+locust==2.37.7
+
+# Cost tracking
+tiktoken==0.9.0
+
+# Statistical analysis
+scipy==1.15.3
+numpy==2.2.6
+pandas==2.2.3
+
+# Observability
+prometheus-client==0.22.1
+evidently==0.6.7
+
+# Experiment tracking
+mlflow==2.22.0
+
+# Utilities
+python-dotenv==1.1.0
+httpx==0.28.1
+psutil==7.0.0
+requests==2.32.3

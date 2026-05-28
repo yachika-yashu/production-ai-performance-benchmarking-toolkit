@@ -1,0 +1,182 @@
+[
+  {
+    "question": "What is Retrieval Augmented Generation (RAG)?",
+    "ground_truth": "RAG is an AI framework that enhances LLM outputs by retrieving relevant information from an external knowledge base before generating a response, grounding answers in retrieved facts rather than solely relying on model training weights.",
+    "category": "factual",
+    "difficulty": "easy"
+  },
+  {
+    "question": "What are the three core stages of a RAG pipeline?",
+    "ground_truth": "The three core stages are indexing (splitting documents into chunks, embedding them, and storing in a vector database), retrieval (embedding the query and fetching nearest matching chunks), and generation (injecting retrieved chunks as context and generating a grounded response).",
+    "category": "factual",
+    "difficulty": "easy"
+  },
+  {
+    "question": "Why is RAG preferred over fine-tuning for frequently changing knowledge domains?",
+    "ground_truth": "RAG is preferred because the knowledge base can be updated without retraining the model. Fine-tuning bakes knowledge into model weights, so any knowledge update requires a new training run, which is expensive and slow.",
+    "category": "reasoning",
+    "difficulty": "medium"
+  },
+  {
+    "question": "What is cosine similarity and why is it preferred for text embeddings?",
+    "ground_truth": "Cosine similarity measures the angle between two vectors. It is preferred for text embeddings because it is length-invariant — it captures semantic direction regardless of document length, making it robust to variations in text size.",
+    "category": "factual",
+    "difficulty": "medium"
+  },
+  {
+    "question": "What is FAISS and what index type offers the best speed-recall tradeoff?",
+    "ground_truth": "FAISS (Facebook AI Similarity Search) is an in-memory vector search library. The HNSW (Hierarchical Navigable Small World) index type offers the best speed-recall tradeoff for most use cases.",
+    "category": "factual",
+    "difficulty": "medium"
+  },
+  {
+    "question": "What does faithfulness measure in RAGAS evaluation?",
+    "ground_truth": "Faithfulness measures whether the generated answer is factually grounded in the retrieved context. A score of 1.0 means every claim in the answer can be traced to the retrieved context. Low faithfulness indicates hallucination.",
+    "category": "factual",
+    "difficulty": "easy"
+  },
+  {
+    "question": "What does context recall measure and what does low context recall indicate?",
+    "ground_truth": "Context recall measures whether the retrieved context contains all information needed to answer the question. Low context recall means the retrieval step is failing — the right information exists in the knowledge base but is not being found.",
+    "category": "factual",
+    "difficulty": "easy"
+  },
+  {
+    "question": "What is the difference between P50, P95, and P99 latency?",
+    "ground_truth": "P50 (median) shows typical performance. P95 shows what 95% of users experience. P99 shows the worst-case experience for 99% of users. The mean is misleading because LLM latency distributions are right-skewed.",
+    "category": "factual",
+    "difficulty": "easy"
+  },
+  {
+    "question": "What is Time to First Token (TTFT) and when does it matter most?",
+    "ground_truth": "TTFT is how long until the model starts responding (the first token arrives). It matters most for streaming applications where the user sees output progressively, as it determines perceived responsiveness.",
+    "category": "factual",
+    "difficulty": "medium"
+  },
+  {
+    "question": "How does query routing reduce LLM API costs?",
+    "ground_truth": "Query routing classifies incoming queries by complexity and routes simple factual lookups to cheap small models (like GPT-4o-mini) while sending complex multi-hop reasoning to expensive large models. In most systems 70-80% of queries are simple enough for cheaper models, reducing overall spend by 50-70%.",
+    "category": "reasoning",
+    "difficulty": "medium"
+  },
+  {
+    "question": "Why are output tokens more expensive than input tokens?",
+    "ground_truth": "Output tokens cost 3-5x more than input tokens on most LLM APIs because generating each output token requires a full forward pass through the model, while input tokens are processed in parallel during the prefill stage.",
+    "category": "reasoning",
+    "difficulty": "hard"
+  },
+  {
+    "question": "What are the four components of an effective production RAG system prompt?",
+    "ground_truth": "The four components are: a role definition (who the model is), context handling instructions (how to use retrieved documents), output format instructions (how to structure the response), and uncertainty handling (what to do when context is insufficient).",
+    "category": "factual",
+    "difficulty": "medium"
+  },
+  {
+    "question": "What is prompt versioning and why does it matter?",
+    "ground_truth": "Prompt versioning treats system prompts as code artifacts — tracked with version numbers, change descriptions, and content hashes. It matters because it enables rolling back prompt regressions, reproducing historical benchmark results, and understanding exactly what changed between versions.",
+    "category": "factual",
+    "difficulty": "medium"
+  },
+  {
+    "question": "What is trajectory efficiency in agentic systems?",
+    "ground_truth": "Trajectory efficiency is the ratio of minimum possible steps to actual steps taken by an agent. A score of 1.0 means the agent took the optimal number of steps. A score of 0.5 means the agent took twice as many steps as needed.",
+    "category": "factual",
+    "difficulty": "medium"
+  },
+  {
+    "question": "How do you prevent reasoning loops in LangGraph agents?",
+    "ground_truth": "Set a hard maximum step count in the routing function and force synthesis when exceeded. Also track tool call history and detect when the same tool is called three or more times, which is almost always a loop.",
+    "category": "factual",
+    "difficulty": "medium"
+  },
+  {
+    "question": "What are the four gates every AI pull request should pass?",
+    "ground_truth": "Quality gate (RAGAS scores above floor), latency gate (P99 below ceiling), cost gate (average cost per query below budget), and safety gate (refusal rate above minimum, PII leakage below maximum).",
+    "category": "factual",
+    "difficulty": "easy"
+  },
+  {
+    "question": "Why are safety gates non-negotiable in AI CI/CD?",
+    "ground_truth": "Safety gates are non-negotiable because a system that is faster or cheaper but less safe is strictly worse. Any safety regression blocks the merge regardless of other improvements because safety failures can cause direct harm to users.",
+    "category": "reasoning",
+    "difficulty": "medium"
+  },
+  {
+    "question": "What is query distribution drift and why is it dangerous?",
+    "ground_truth": "Query distribution drift occurs when production users start asking different types of questions than the evaluation dataset anticipated. It is dangerous because offline benchmarks stop being predictive of production performance — the system appears healthy but silently degrades on real traffic.",
+    "category": "factual",
+    "difficulty": "hard"
+  },
+  {
+    "question": "What is the difference between monitoring and observability for AI systems?",
+    "ground_truth": "Monitoring tracks predefined metrics and alerts when thresholds are breached — it answers 'is something wrong?' Observability provides structured data that lets you ask arbitrary questions about system behavior — it answers 'why is something wrong?'",
+    "category": "factual",
+    "difficulty": "medium"
+  },
+  {
+    "question": "How can you measure production quality without ground truth labels?",
+    "ground_truth": "Use reference-free metrics. Faithfulness (does the answer stick to the retrieved context) and answer relevancy (does the answer address the question) can be scored on any production query without a labeled correct answer. Only context recall requires labeled answers.",
+    "category": "reasoning",
+    "difficulty": "hard"
+  },
+  {
+    "question": "What chunk size is recommended as a starting point for RAG systems?",
+    "ground_truth": "A chunk size of 512 tokens with 50-token overlap is a common starting point. Small chunks retrieve precisely but lack context; large chunks provide more context but retrieve noisily.",
+    "category": "factual",
+    "difficulty": "easy"
+  },
+  {
+    "question": "What production quality targets should a RAG system aim for in RAGAS metrics?",
+    "ground_truth": "Production systems should target faithfulness above 0.85, context recall above 0.80, answer relevancy above 0.80, and context precision above 0.75.",
+    "category": "factual",
+    "difficulty": "easy"
+  },
+  {
+    "question": "What is semantic caching and how does it reduce LLM costs?",
+    "ground_truth": "Semantic caching stores previous query-response pairs and uses embedding similarity to detect when a new query is semantically equivalent to a cached one. When a cache hit occurs, the stored response is returned without making an API call, eliminating the cost entirely.",
+    "category": "reasoning",
+    "difficulty": "hard"
+  },
+  {
+    "question": "What does an asyncio.to_thread() call solve in FastAPI AI endpoints?",
+    "ground_truth": "It moves synchronous blocking calls (like LangChain retrievers or LLM clients) to a thread pool, freeing the FastAPI event loop to handle other requests while waiting. Without this, blocking calls deadlock the event loop under concurrent load, causing P99 latency to explode.",
+    "category": "reasoning",
+    "difficulty": "hard"
+  },
+  {
+    "question": "What is the OpenAI text-embedding-3-small model dimension size?",
+    "ground_truth": "OpenAI text-embedding-3-small produces 1536-dimensional vectors.",
+    "category": "factual",
+    "difficulty": "easy"
+  },
+  {
+    "question": "What are the common agent failure modes to benchmark?",
+    "ground_truth": "Wrong tool selection (irrelevant tool leads to hallucinated answer), reasoning loops (same tool called repeatedly without progress), unnecessary steps (task solved in 2 steps but agent takes 6), and tool call formatting errors (incorrect parameter types or missing required fields).",
+    "category": "factual",
+    "difficulty": "medium"
+  },
+  {
+    "question": "How do you derive regression thresholds from baseline data rather than guessing?",
+    "ground_truth": "Measure score variation across multiple runs on the same unchanged system to find natural variability. Set the regression floor at baseline_score minus two standard deviations. This accommodates LLM non-determinism while catching genuine regressions caused by code changes.",
+    "category": "reasoning",
+    "difficulty": "hard"
+  },
+  {
+    "question": "What is the recommended split between fast and full regression test tiers?",
+    "ground_truth": "Fast tier: 10-15 examples, runs in 2-3 minutes, triggers on every PR, catches obvious regressions. Full tier: complete eval dataset, runs in 10-20 minutes, triggers only on merges to main, catches subtle regressions the fast tier misses.",
+    "category": "factual",
+    "difficulty": "medium"
+  },
+  {
+    "question": "What makes HNSW better than IVF for vector search in most production cases?",
+    "ground_truth": "HNSW (Hierarchical Navigable Small World) provides a better speed-recall tradeoff than IVF (Inverted File Index) because it builds a layered graph structure that enables fast traversal to approximate nearest neighbors with very high recall, without requiring cluster assignment like IVF does.",
+    "category": "reasoning",
+    "difficulty": "hard"
+  },
+  {
+    "question": "What AI-specific metrics should be exposed to Prometheus beyond standard API metrics?",
+    "ground_truth": "Quality score gauges updated from periodic RAGAS sampling, token usage counters for cost tracking, per-model latency breakdowns, and a quality drift alert flag that fires when production scores drop below threshold.",
+    "category": "factual",
+    "difficulty": "medium"
+  }
+]

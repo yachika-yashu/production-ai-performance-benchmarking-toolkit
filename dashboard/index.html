@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAGOps — AI Performance Dashboard</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0f172a; color: #f1f5f9; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; }
+    .app { min-height: 100vh; padding: 24px; max-width: 1400px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 700; color: #f1f5f9; }
+    .header p { color: #64748b; font-size: 12px; margin-top: 4px; }
+    .refresh-btn { background: none; border: 1px solid #334155; color: #818cf8; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .refresh-btn:hover { background: #1e293b; }
+    .alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; border: 1px solid; }
+    .alert-good     { background: #052e16; border-color: #16a34a; color: #86efac; }
+    .alert-warning  { background: #1c1917; border-color: #d97706; color: #fcd34d; }
+    .alert-critical { background: #1c0606; border-color: #dc2626; color: #fca5a5; }
+    .scorecard { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .card { background: #1e293b; border: 1px solid; border-radius: 12px; padding: 14px; }
+    .card-good     { border-color: #16a34a; background: #020f04; }
+    .card-warning  { border-color: #d97706; background: #0c0a00; }
+    .card-critical { border-color: #dc2626; background: #0c0000; }
+    .card-unknown  { border-color: #334155; background: #1e293b; }
+    .card-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .card-value { font-size: 24px; font-weight: 700; color: #f1f5f9; }
+    .card-status { font-size: 11px; margin-top: 4px; color: #94a3b8; }
+    .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .panel { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 18px; }
+    .panel-title { font-size: 13px; font-weight: 600; color: #cbd5e1; margin-bottom: 14px; }
+    .panel-subtitle { font-size: 11px; color: #475569; margin-top: -10px; margin-bottom: 14px; }
+    .triangle-values { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; text-align: center; }
+    .triangle-dim { font-size: 11px; color: #64748b; text-transform: capitalize; }
+    .triangle-score { font-size: 18px; font-weight: 700; color: #f1f5f9; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 0 8px 8px 0; border-bottom: 1px solid #1e293b; }
+    td { padding: 8px 8px 8px 0; border-bottom: 1px solid #0f172a; color: #cbd5e1; font-size: 12px; vertical-align: middle; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge-pass { background: #052e16; color: #86efac; }
+    .badge-fail { background: #1c0606; color: #fca5a5; }
+    .mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+    .loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-size: 16px; color: #475569; }
+    .error { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: #ef4444; }
+    .error p { margin-top: 8px; color: #475569; font-size: 12px; }
+    .last-update { font-size: 11px; color: #475569; text-align: right; }
+    @media (max-width: 900px) {
+      .charts-row, .bottom-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+const {
+  LineChart, Line, RadarChart, Radar, PolarGrid,
+  PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} = Recharts;
+
+const API = "http://localhost:8000";
+
+const STATUS_ICONS = { good: "✅", warning: "⚠️", critical: "🔴", unknown: "⬜" };
+
+function fmt(val, type = "score") {
+  if (val == null) return "—";
+  if (type === "ms")   return `${Math.round(val)}ms`;
+  if (type === "usd")  return `$${val.toFixed(6)}`;
+  if (type === "pct")  return `${(val * 100).toFixed(1)}%`;
+  return val < 1 ? val.toFixed(3) : val.toFixed(0);
+}
+
+function ScorecardCard({ label, value, status, unit }) {
+  return (
+    <div className={`card card-${status || "unknown"}`}>
+      <div className="card-label">{label}</div>
+      <div className="card-value">{fmt(value, unit)}</div>
+      <div className="card-status">{STATUS_ICONS[status]} {status}</div>
+    </div>
+  );
+}
+
+function AlertBanner({ alert }) {
+  return <div className={`alert alert-${alert.level}`}>{STATUS_ICONS[alert.level]} {alert.message}</div>;
+}
+
+const TOOLTIP_STYLE = {
+  background: "#1e293b", border: "1px solid #334155",
+  borderRadius: "8px", color: "#f1f5f9", fontSize: "12px"
+};
+
+function QualityChart({ data }) {
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+        <XAxis dataKey="week" tick={{ fill: "#475569", fontSize: 10 }} />
+        <YAxis domain={[0.5, 1.0]} tick={{ fill: "#475569", fontSize: 10 }} />
+        <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v?.toFixed(3)]} />
+        <Legend wrapperStyle={{ color: "#94a3b8", fontSize: "11px" }} />
+        <Line type="monotone" dataKey="faithfulness"     stroke="#818cf8" strokeWidth={2} dot={{ r: 3 }} name="Faithfulness" />
+        <Line type="monotone" dataKey="context_recall"   stroke="#34d399" strokeWidth={2} dot={{ r: 3 }} name="Context Recall" />
+        <Line type="monotone" dataKey="answer_relevancy" stroke="#fb923c" strokeWidth={2} dot={{ r: 3 }} name="Ans Relevancy" />
+        <Line type="monotone" dataKey="overall_health"   stroke="#e2e8f0" strokeWidth={2.5} strokeDasharray="5 5" dot={{ r: 3 }} name="Overall Health" />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+function TriangleChart({ data }) {
+  const radarData = [
+    { dim: "Quality", score: Math.round((data.quality || 0) * 100) },
+    { dim: "Speed",   score: Math.round((data.speed   || 0) * 100) },
+    { dim: "Cost",    score: Math.round((data.cost    || 0) * 100) },
+  ];
+  return (
+    <>
+      <ResponsiveContainer width="100%" height={200}>
+        <RadarChart data={radarData}>
+          <PolarGrid stroke="#334155" />
+          <PolarAngleAxis dataKey="dim" tick={{ fill: "#94a3b8", fontSize: 12 }} />
+          <PolarRadiusAxis domain={[0, 100]} tick={{ fill: "#475569", fontSize: 9 }} />
+          <Radar dataKey="score" stroke="#818cf8" fill="#818cf8" fillOpacity={0.25} strokeWidth={2} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${v}/100`]} />
+        </RadarChart>
+      </ResponsiveContainer>
+      <div className="triangle-values">
+        {Object.entries(data).map(([k, v]) => (
+          <div key={k}>
+            <div className="triangle-dim">{k}</div>
+            <div className="triangle-score">{Math.round((v || 0) * 100)}</div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function LatencyChart({ data }) {
+  return (
+    <ResponsiveContainer width="100%" height={180}>
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+        <XAxis dataKey="week" tick={{ fill: "#475569", fontSize: 10 }} />
+        <YAxis tick={{ fill: "#475569", fontSize: 10 }} />
+        <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${v?.toFixed(0)}ms`]} />
+        <Line type="monotone" dataKey="p99_latency_ms" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="P99 Latency" />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+function RegressionTable({ data }) {
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table>
+        <thead><tr><th>Run</th><th>Commit</th><th>Gates</th><th>Status</th></tr></thead>
+        <tbody>
+          {data.map((r, i) => (
+            <tr key={i}>
+              <td className="mono" style={{ fontSize: "11px" }}>{r.run_name.replace("weekly_benchmark_", "")}</td>
+              <td className="mono" style={{ fontSize: "11px", color: "#64748b" }}>{(r.commit_sha || "").slice(0, 7)}</td>
+              <td>{r.gates_passed != null ? `${r.gates_passed}/${r.gates_total}` : "—"}</td>
+              <td><span className={`badge badge-${r.passed ? "pass" : "fail"}`}>{r.passed ? "✅ Pass" : "❌ Fail"}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Dashboard() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastRefresh, setLastRefresh] = useState(null);
+
+  const fetchData = async () => {
+    try {
+      const res = await fetch(`${API}/api/dashboard`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setData(await res.json());
+      setLastRefresh(new Date().toLocaleTimeString());
+      setError(null);
+    } catch(e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const t = setInterval(fetchData, 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (loading) return <div className="loading">Loading dashboard...</div>;
+  if (error) return (
+    <div className="error">
+      <div>❌ Cannot connect to API: {error}</div>
+      <p>Start the dashboard API: <code>python scripts/run_full_benchmark.py --dashboard</code></p>
+    </div>
+  );
+
+  const { scorecard, trend_data, regression_history, alerts, triangle, total_runs } = data;
+
+  return (
+    <div className="app">
+      <div className="header">
+        <div>
+          <h1>🔬 RAGOps — AI Performance Dashboard</h1>
+          <p>production-ai-performance-benchmarking-toolkit · {total_runs} benchmark runs · All 12 layers</p>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div className="last-update">Last updated: {lastRefresh}</div>
+          <button className="refresh-btn" onClick={fetchData}>↻ Refresh</button>
+        </div>
+      </div>
+
+      <div className="alerts">
+        {alerts.map((a, i) => <AlertBanner key={i} alert={a} />)}
+      </div>
+
+      <div className="scorecard">
+        <ScorecardCard label="Overall Health"  value={scorecard.overall_health?.value}     status={scorecard.overall_health?.status} />
+        <ScorecardCard label="Faithfulness"    value={scorecard.faithfulness?.value}       status={scorecard.faithfulness?.status} />
+        <ScorecardCard label="Context Recall"  value={scorecard.context_recall?.value}     status={scorecard.context_recall?.status} />
+        <ScorecardCard label="Ans Relevancy"   value={scorecard.answer_relevancy?.value}   status={scorecard.answer_relevancy?.status} />
+        <ScorecardCard label="P99 Latency"     value={scorecard.p99_latency_ms?.value}     status={scorecard.p99_latency_ms?.status}     unit="ms" />
+        <ScorecardCard label="Cost / Query"    value={scorecard.avg_cost_per_query?.value} status={scorecard.avg_cost_per_query?.status} unit="usd" />
+        <ScorecardCard label="Refusal Rate"    value={scorecard.refusal_rate?.value}       status={scorecard.refusal_rate?.status} />
+      </div>
+
+      <div className="charts-row">
+        <div className="panel">
+          <div className="panel-title">📈 Quality Metrics Over Time</div>
+          <QualityChart data={trend_data} />
+        </div>
+        <div className="panel">
+          <div className="panel-title">🔺 Performance Triangle</div>
+          <div className="panel-subtitle">Quality · Speed · Cost (100 = optimal)</div>
+          <TriangleChart data={triangle} />
+        </div>
+      </div>
+
+      <div className="bottom-row">
+        <div className="panel">
+          <div className="panel-title">⚡ P99 Latency Trend</div>
+          <LatencyChart data={trend_data} />
+        </div>
+        <div className="panel">
+          <div className="panel-title">🔍 Regression Gate History</div>
+          <RegressionTable data={regression_history} />
+        </div>
+      </div>
+
+      <div style={{ textAlign: "center", color: "#1e293b", fontSize: "11px", marginTop: "24px" }}>
+        RAGOps · Built with LangChain · RAGAS · MLflow · Evidently · Prometheus
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Dashboard />);
+</script>
+</body>
+</html>
